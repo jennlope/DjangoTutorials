@@ -1,7 +1,8 @@
 from django import forms
 from django.urls import reverse
+from django.contrib import messages
 from django.shortcuts import render, redirect
-#from django.http import HttpResponse
+from django.http import HttpResponseRedirect
 from django.views.generic import TemplateView
 from django.views import View
 # Create your views here.
@@ -11,6 +12,8 @@ from django.views import View
     
 class HomePageView(TemplateView):
     template_name = 'pages/home.html'
+
+template_name="pages/products/product_success.html"
     
 class AboutPageView(TemplateView):
     template_name = 'pages/about.html'
@@ -65,7 +68,10 @@ class ProductShowView(View):
  
     def get(self, request, id): 
         viewData = {} 
-        product = Product.products[int(id)-1] 
+        try:
+            product = Product.products[int(id)-1] 
+        except IndexError:
+            return HttpResponseRedirect(reverse('home'))
         viewData["title"] = product["name"] + " - Online Store" 
         viewData["subtitle"] =  product["name"] + " - Product information" 
         viewData["product"] = product 
@@ -90,10 +96,22 @@ class ProductCreateView(View):
     def post(self, request): 
         form = ProductForm(request.POST) 
         if form.is_valid(): 
-             
-            return redirect('index')  
+            name = form.cleaned_data["name"]
+            price = form.cleaned_data["price"]
+            
+            new_product = {
+                "id": str(len(Product.products) + 1),  # Generar un ID basado en la cantidad actual
+                "name": name,
+                "description": "New product",
+                "price": price
+            }
+            
+            Product.products.append(new_product)
+
+            messages.success(request, "Successfully!")
+            return redirect('product_success')  
         else: 
-            viewData = {} 
-            viewData["title"] = "Create product" 
-            viewData["form"] = form 
-            return render(request, self.template_name, viewData)
+            return render(request, self.template_name, {"title": "Create product", "form": form})
+        
+class SuccessView(TemplateView):
+    template_name = 'pages/products/product_success.html'
